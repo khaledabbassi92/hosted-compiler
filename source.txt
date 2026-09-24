@@ -1,0 +1,19 @@
+// Axiom Test Program - Dynamic Memory Lifecycle
+// Demonstrates claim (malloc) and purge (free) with clean decoupled runtime
+
+slot buffer_size: int = 64;
+slot ptr: *int = claim(buffer_size);
+
+// Write to dynamically allocated memory
+*ptr = 1337;
+
+emit "Allocated 64 bytes on process heap at address:";
+emit ptr;
+
+emit "Value stored inside heap block:";
+emit *ptr;
+
+// Free allocated memory
+purge(ptr);
+
+emit "Successfully purged heap allocation!";
