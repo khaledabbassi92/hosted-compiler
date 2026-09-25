@@ -51,7 +51,6 @@ mainCRTStartup:
     mov [var_buffer_size], rax
     mov rax, [var_buffer_size]
     mov [reg_1], rax
-    ; claim(size) -> Runtime library call
     mov rcx, [reg_1]
     sub rsp, 32
     call __axiom_claim
@@ -95,7 +94,6 @@ mainCRTStartup:
     add rsp, 32
     mov rax, [var_ptr]
     mov [reg_10], rax
-    ; purge(ptr) -> Runtime library call
     mov rcx, [reg_10]
     sub rsp, 32
     call __axiom_purge

@@ -92,7 +92,7 @@ impl Parser {
                 field_type,
                 offset,
             });
-            offset += 8; // 64-bit aligned
+            offset += 8;
 
             if self.state.peek() == Some(&TokenType::Comma) {
                 self.state.advance();
@@ -401,10 +401,6 @@ impl Parser {
             Some(TokenType::StringLit(s)) => ASTNode::new(NodeKind::StringLit(s)),
             Some(TokenType::Yes) => ASTNode::new(NodeKind::Boolean(true)),
             Some(TokenType::No) => ASTNode::new(NodeKind::Boolean(false)),
-
-            // "claim"/"purge" have no dedicated tokens anymore — they lex as
-            // ordinary identifiers and fall into the generic Call branch below,
-            // exactly like a call to any other library function.
 
             Some(TokenType::Identifier(name)) => {
                 if self.state.peek() == Some(&TokenType::LeftParen) {

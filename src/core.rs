@@ -158,10 +158,6 @@ pub enum NodeKind {
     },
 
     Yield(Option<Box<ASTNode>>),
-    // claim(...)/purge(...) no longer get dedicated AST nodes — they parse as
-    // ordinary NodeKind::Call { callee: "claim"/"purge", .. } and are resolved
-    // by name in ir.rs, exactly like any other library call.
-
     BinaryOp {
         left: Box<ASTNode>,
         op: TokenType,

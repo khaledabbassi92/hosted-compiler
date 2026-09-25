@@ -228,28 +228,6 @@ impl<'a> Emitter<'a> {
         stack_map: Option<&BTreeMap<String, usize>>,
     ) -> io::Result<()> {
         match ins {
-            // Memory allocation: Clean call to runtime
-            IRInstruction::Alloc { dest, size_reg } => {
-                let s_loc = Self::mem_loc(&format!("reg_{}", size_reg), stack_map);
-                let d_loc = Self::mem_loc(&format!("reg_{}", dest), stack_map);
-                writeln!(file, "    ; claim(size) -> Runtime library call")?;
-                writeln!(file, "    mov rcx, {}", s_loc)?;
-                writeln!(file, "    sub rsp, 32")?;
-                writeln!(file, "    call {}", self.runtime.alloc_symbol())?;
-                writeln!(file, "    add rsp, 32")?;
-                writeln!(file, "    mov {}, rax", d_loc)?;
-            }
-
-            // Memory deallocation: Clean call to runtime
-            IRInstruction::Free { ptr_reg } => {
-                let p_loc = Self::mem_loc(&format!("reg_{}", ptr_reg), stack_map);
-                writeln!(file, "    ; purge(ptr) -> Runtime library call")?;
-                writeln!(file, "    mov rcx, {}", p_loc)?;
-                writeln!(file, "    sub rsp, 32")?;
-                writeln!(file, "    call {}", self.runtime.free_symbol())?;
-                writeln!(file, "    add rsp, 32")?;
-            }
-
             // Console output: Dispatches to runtime routines
             IRInstruction::Emit { reg, reg_type } => {
                 let loc = Self::mem_loc(&format!("reg_{}", reg), stack_map);
@@ -530,6 +508,17 @@ impl<'a> Emitter<'a> {
                 writeln!(file, "    jz {}", label)?;
             }
             IRInstruction::Call { dest, name, args } => {
+                // "claim" and "purge" are ordinary calls at the IR level; the
+                // emitter is the layer that knows they're backed by the
+                // runtime library rather than a user/proc label, so it's
+                // where their call targets get resolved to the runtime's
+                // actual (possibly mangled) symbol names.
+                let call_target: &str = match name.as_str() {
+                    "claim" => self.runtime.alloc_symbol(),
+                    "purge" => self.runtime.free_symbol(),
+                    _ => name,
+                };
+
                 let win64_int_regs = ["rcx", "rdx", "r8", "r9"];
                 for (idx, arg_reg) in args.iter().enumerate() {
                     if idx < 4 {
@@ -538,7 +527,7 @@ impl<'a> Emitter<'a> {
                     }
                 }
                 writeln!(file, "    sub rsp, 32")?;
-                writeln!(file, "    call {}", name)?;
+                writeln!(file, "    call {}", call_target)?;
                 writeln!(file, "    add rsp, 32")?;
                 if let Some(d) = dest {
                     let d_loc = Self::mem_loc(&format!("reg_{}", d), stack_map);
@@ -697,13 +686,6 @@ impl<'a> Emitter<'a> {
                     registers.insert(*dest);
                     registers.insert(*base_reg);
                     registers.insert(*index_reg);
-                }
-                IRInstruction::Alloc { dest, size_reg } => {
-                    registers.insert(*dest);
-                    registers.insert(*size_reg);
-                }
-                IRInstruction::Free { ptr_reg } => {
-                    registers.insert(*ptr_reg);
                 }
                 _ => {}
             }

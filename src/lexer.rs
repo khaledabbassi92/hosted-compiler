@@ -201,10 +201,6 @@ impl Lexer {
                         "yield" => tokens.push(TokenType::Yield),
                         "layout" => tokens.push(TokenType::Layout),
                         "slot" => tokens.push(TokenType::Slot),
-                        // "claim"/"purge" are no longer reserved words: they now
-                        // fall through to Identifier below and are resolved as
-                        // ordinary calls against the standalone runtime library
-                        // (see ir.rs BUILTIN_FUNCS) — same as how C treats malloc/free.
                         "yes" => tokens.push(TokenType::Yes),
                         "no" => tokens.push(TokenType::No),
                         "num" => tokens.push(TokenType::TypeNum),

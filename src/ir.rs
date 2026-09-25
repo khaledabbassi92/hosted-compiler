@@ -42,9 +42,6 @@ pub enum IRInstruction {
 
     ComputeFieldAddr { dest: usize, base_reg: usize, byte_offset: usize },
     ComputeIndexAddr { dest: usize, base_reg: usize, index_reg: usize, elem_size: usize },
-
-    Alloc { dest: usize, size_reg: usize },
-    Free { ptr_reg: usize },
 }
 
 #[derive(Debug, Clone)]
@@ -429,19 +426,30 @@ impl IRGenerator {
             }
             // "claim" and "purge" are resolved here by name, not by dedicated
             // grammar — this is the compiler's builtin/prelude table, playing
-            // the same role a C header's function prototypes would. They still
-            // lower to the specialized Alloc/Free IR (and from there to calls
-            // into the standalone axiom_rt runtime library) so pointer typing
-            // is preserved exactly as before.
+            // the same role a C header's function prototypes would. At the IR
+            // level they are ordinary calls, indistinguishable from a call to
+            // any other function; only their result type is special-cased
+            // here so pointer typing is preserved. Their actual behavior is
+            // supplied entirely by the runtime library, and it's up to the
+            // assembly/runtime emitters to resolve the "claim"/"purge" call
+            // targets to the runtime's symbols.
             NodeKind::Call { callee, args } if callee == "claim" && args.len() == 1 => {
                 let (s_reg, _) = self.generate_expression(&args[0], program);
                 let dest = self.new_register();
-                self.emit_ins(program, IRInstruction::Alloc { dest, size_reg: s_reg.unwrap() });
+                self.emit_ins(program, IRInstruction::Call {
+                    dest: Some(dest),
+                    name: callee.clone(),
+                    args: vec![s_reg.unwrap()],
+                });
                 (Some(dest), Type::Pointer(Box::new(Type::None)))
             }
             NodeKind::Call { callee, args } if callee == "purge" && args.len() == 1 => {
                 let (p_reg, _) = self.generate_expression(&args[0], program);
-                self.emit_ins(program, IRInstruction::Free { ptr_reg: p_reg.unwrap() });
+                self.emit_ins(program, IRInstruction::Call {
+                    dest: None,
+                    name: callee.clone(),
+                    args: vec![p_reg.unwrap()],
+                });
                 (None, Type::None)
             }
             NodeKind::Call { callee, args } => {
